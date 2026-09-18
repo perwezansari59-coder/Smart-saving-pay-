@@ -20,26 +20,20 @@ jobs:
       - name: Extract ZIP
         run: |
           rm -rf source
-          mkdir -p source
+          mkdir source
           unzip -q "smart-saving-pay (1).zip" -d source
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: '9.3.1'
-          cache-provider: basic
-          validate-wrappers: false
 
       - name: Find Android project
         run: |
-          PROJECT_DIR=$(dirname "$(find source -type f \( -name settings.gradle.kts -o -name settings.gradle \) | head -1)")
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          PROJECT_DIR=$(dirname "$(find source -type f -name settings.gradle.kts -o -name settings.gradle | head -1)")
+          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+          echo "Project found at: $PROJECT_DIR"
 
       - name: Create debug keystore
         run: |
-          mkdir -p "$PROJECT_DIR/app"
-          keytool -genkeypair -v \
-            -keystore "$PROJECT_DIR/app/debug.keystore" \
+          keytool -genkeypair \
+            -v \
+            -keystore "$PROJECT_DIR/debug.keystore" \
             -storepass android \
             -keypass android \
             -alias androiddebugkey \
@@ -48,22 +42,18 @@ jobs:
             -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US"
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: 9.3.1
+
       - name: Build APK
         run: |
           cd "$PROJECT_DIR"
           gradle assembleDebug --no-daemon
 
-      - name: Find APK
-        run: |
-          APK=$(find "$PROJECT_DIR" -type f -path "*/build/outputs/apk/debug/*.apk" | head -1)
-          if [ -z "$APK" ]; then
-            echo "APK file not found"
-            exit 1
-          fi
-          cp "$APK" "$GITHUB_WORKSPACE/SmartSavingPay.apk"
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: SmartSavingPay-APK
-          path: SmartSavingPay.apk
+          name: Smart-Saving-Pay-APK
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
