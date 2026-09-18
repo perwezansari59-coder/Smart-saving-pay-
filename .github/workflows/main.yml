@@ -1,0 +1,41 @@
+name: Build Smart Saving Pay APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download project
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Extract ZIP
+        run: |
+          mkdir source
+          unzip -q "smart-saving-pay (1).zip" -d source
+
+      - name: Build APK
+        run: |
+          PROJECT_DIR=$(dirname "$(find source -name gradlew -type f | head -1)")
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "gradlew not found"
+            exit 1
+          fi
+          chmod +x "$PROJECT_DIR/gradlew"
+          cd "$PROJECT_DIR"
+          ./gradlew assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/SmartSavingPay.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartSavingPay-APK
+          path: SmartSavingPay.apk
