@@ -12,27 +12,44 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Extract ZIP
         run: |
+          rm -rf source
           mkdir source
           unzip -q "smart-saving-pay (1).zip" -d source
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.11'
+          cache-provider: basic
+          validate-wrappers: false
+
       - name: Build APK
         run: |
-          PROJECT_DIR=$(dirname "$(find source -name gradlew -type f | head -1)")
+          PROJECT_DIR=$(dirname "$(find source -type f \( -name settings.gradle.kts -o -name settings.gradle \) | head -1)")
+
           if [ -z "$PROJECT_DIR" ]; then
-            echo "gradlew not found"
+            echo "Android project root not found"
             exit 1
           fi
-          chmod +x "$PROJECT_DIR/gradlew"
+
           cd "$PROJECT_DIR"
-          ./gradlew assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/SmartSavingPay.apk"
+          gradle assembleDebug --no-daemon
+
+          APK=$(find . -type f -path "*/build/outputs/apk/debug/*.apk" | head -1)
+
+          if [ -z "$APK" ]; then
+            echo "APK file not found"
+            exit 1
+          fi
+
+          cp "$APK" "$GITHUB_WORKSPACE/SmartSavingPay.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
