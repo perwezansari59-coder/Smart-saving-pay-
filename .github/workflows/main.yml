@@ -30,11 +30,16 @@ jobs:
           cache-provider: basic
           validate-wrappers: false
 
+      - name: Find Android project
+        run: |
+          PROJECT_DIR=$(dirname "$(find source -type f \( -name settings.gradle.kts -o -name settings.gradle \) | head -1)")
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
       - name: Create debug keystore
         run: |
-          mkdir -p source/app
+          mkdir -p "$PROJECT_DIR/app"
           keytool -genkeypair -v \
-            -keystore source/app/debug.keystore \
+            -keystore "$PROJECT_DIR/app/debug.keystore" \
             -storepass android \
             -keypass android \
             -alias androiddebugkey \
@@ -45,23 +50,16 @@ jobs:
 
       - name: Build APK
         run: |
-          PROJECT_DIR=$(dirname "$(find source -type f -name settings.gradle.kts -o -name settings.gradle | head -1)")
-
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "Android project root not found"
-            exit 1
-          fi
-
           cd "$PROJECT_DIR"
           gradle assembleDebug --no-daemon
 
-          APK=$(find . -type f -path "*/build/outputs/apk/debug/*.apk" | head -1)
-
+      - name: Find APK
+        run: |
+          APK=$(find "$PROJECT_DIR" -type f -path "*/build/outputs/apk/debug/*.apk" | head -1)
           if [ -z "$APK" ]; then
             echo "APK file not found"
             exit 1
           fi
-
           cp "$APK" "$GITHUB_WORKSPACE/SmartSavingPay.apk"
 
       - name: Upload APK
